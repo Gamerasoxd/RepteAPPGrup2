@@ -21,12 +21,14 @@ export interface AttendanceLog {
   courseId: string;
   date: string;
   timestamp: string;
-  status: 'present' | 'late';
-  note?: string;
+  status: 'present' | 'late' | 'absent';
+  isJustified?: boolean;
+  justificationReason?: string;
+  justificationDocUrl?: string;
 }
 
 export interface AppConfig {
   kioskCourseId: string;
 }
 
-export type ViewMode = 'kiosk' | 'admin';
+export type ViewMode = 'kiosk' | 'admin' | 'mobile';

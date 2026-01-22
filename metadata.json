@@ -1,7 +1,8 @@
 {
   "name": "SalesiansCheck - Sistema de Gestió d'Assistència",
-  "description": "Una aplicació interactiva per al registre d'assistència d'alumnes amb interfície tàctil, assistent de veu per IA i gestió avançada de base de dades.",
+  "description": "Sistema integral de fitxatge i gestió d'assistència amb IA per a justificació de faltes.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "camera"
   ]
 }

@@ -78,10 +78,40 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
   };
 
   const handleReset = async () => {
-    if (!confirm("ATENCIÓ: Vols reiniciar el sistema? Aquesta acció esborrarà tots els registres d'assistència i restablirà els alumnes de mostra.")) return;
+    if (!confirm("ATENCIÓ: Vols reiniciar el sistema? Aquesta acció esborrarà TOTS els registres d'assistència, justificacions i PINs d'alumnes, i restaurarà la llista per defecte.")) return;
     setIsLoading(true);
-    await dbService.resetSystem();
-    await refreshData();
+    const success = await dbService.resetSystem();
+    if (success) {
+      alert("Sistema restaurat correctament.");
+      await refreshData();
+    } else {
+      alert("Error al restaurar el sistema. Revisa la connexió.");
+    }
+    setIsLoading(false);
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    if (!confirm("Segur que vols eliminar aquest alumne? S'esborraran també els seus registres d'assistència històrics.")) return;
+    try {
+      await dbService.deleteStudent(id);
+      await refreshData();
+    } catch (err) {
+      console.error(err);
+      alert("Error en eliminar l'alumne. Revisa la connexió a la base de dades.");
+    }
+  };
+
+  const handleSaveStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    try {
+      await dbService.updateStudent(editingStudent);
+      setEditingStudent(null);
+      await refreshData();
+    } catch (err) {
+      console.error(err);
+      alert("Error en guardar els canvis de l'alumne.");
+    }
   };
 
   const exportToCSV = () => {
@@ -242,8 +272,8 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
                              </div>
                            </div>
                            <div className="flex gap-2">
-                             <button onClick={() => setEditingStudent(student)} className="p-2 text-blue-400 bg-white rounded-lg border shadow-sm"><Edit3 size={14}/></button>
-                             <button onClick={() => dbService.deleteStudent(student.id).then(refreshData)} className="p-2 text-red-400 bg-white rounded-lg border shadow-sm"><Trash2 size={14}/></button>
+                             <button onClick={() => setEditingStudent(student)} className="p-2 text-blue-400 bg-white rounded-lg border shadow-sm transition-colors hover:bg-blue-50"><Edit3 size={14}/></button>
+                             <button onClick={() => handleDeleteStudent(student.id)} className="p-2 text-red-400 bg-white rounded-lg border shadow-sm transition-colors hover:bg-red-50"><Trash2 size={14}/></button>
                            </div>
                          </div>
                          <div className="grid grid-cols-3 gap-2 mb-4">
@@ -383,17 +413,31 @@ const AdminView: React.FC<AdminViewProps> = ({ onLogout }) => {
         {editingStudent && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-10 shadow-2xl animate-in zoom-in duration-200">
-              <h3 className="text-2xl font-black mb-6 text-red-600 flex items-center gap-3"><Edit3/> Editar Alumne</h3>
-              <form onSubmit={async (e)=>{e.preventDefault(); await dbService.updateStudent(editingStudent); setEditingStudent(null); refreshData();}} className="space-y-6">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Nom i Cognoms</label>
-                <input type="text" value={editingStudent.name} onChange={e=>setEditingStudent({...editingStudent, name:e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold outline-none focus:border-red-500"/></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Curs</label>
-                  <select value={editingStudent.courseId} onChange={e=>setEditingStudent({...editingStudent, courseId:e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold">{courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">PIN</label>
-                  <input type="text" value={editingStudent.pin||''} onChange={e=>setEditingStudent({...editingStudent, pin:e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold"/></div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-black text-red-600 flex items-center gap-3"><Edit3/> Editar Alumne</h3>
+                <button onClick={() => setEditingStudent(null)} className="text-gray-400 hover:text-red-600"><X size={24}/></button>
+              </div>
+              <form onSubmit={handleSaveStudent} className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Nom i Cognoms</label>
+                  <input type="text" value={editingStudent.name} onChange={e=>setEditingStudent({...editingStudent, name:e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold outline-none focus:border-red-500"/>
                 </div>
-                <div className="flex gap-4 pt-4"><button type="button" onClick={()=>setEditingStudent(null)} className="flex-1 py-4 text-gray-400 font-bold">Cancel·lar</button><button type="submit" className="flex-1 py-4 bg-red-600 text-white font-bold rounded-2xl shadow-xl hover:bg-red-700">GUARDAR</button></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Curs</label>
+                    <select value={editingStudent.courseId} onChange={e=>setEditingStudent({...editingStudent, courseId:e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold">
+                      {courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">PIN</label>
+                    <input type="text" value={editingStudent.pin||''} onChange={e=>setEditingStudent({...editingStudent, pin:e.target.value})} placeholder="Sense PIN" className="w-full p-4 bg-gray-50 border rounded-2xl font-bold"/>
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={()=>setEditingStudent(null)} className="flex-1 py-4 text-gray-400 font-bold">Cancel·lar</button>
+                  <button type="submit" className="flex-1 py-4 bg-red-600 text-white font-bold rounded-2xl shadow-xl hover:bg-red-700 active:scale-95 transition-transform">GUARDAR CANVIS</button>
+                </div>
               </form>
             </div>
           </div>

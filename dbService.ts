@@ -11,7 +11,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export const dbService = {
   getStudents: async (): Promise<Student[]> => {
     try {
-      const { data, error } = await supabase.from('students').select('*');
+      const { data, error } = await supabase.from('students').select('*').order('name', { ascending: true });
       if (error) throw error;
       return data.map(s => ({
         id: s.id,
@@ -59,31 +59,37 @@ export const dbService = {
   },
 
   addStudent: async (student: Student) => {
-    await supabase.from('students').upsert({
+    const { error } = await supabase.from('students').upsert({
       id: student.id,
       name: student.name,
       course_id: student.courseId,
       pin: student.pin,
       status: student.status
     });
+    if (error) throw error;
   },
 
   updateStudent: async (student: Student) => {
-    await supabase.from('students').update({
+    const { error } = await supabase.from('students').update({
       name: student.name,
       course_id: student.courseId,
       pin: student.pin,
       status: student.status
     }).eq('id', student.id);
+    if (error) throw error;
   },
 
   deleteStudent: async (studentId: string) => {
+    // Primer eliminem els registres d'assistència per evitar error de clau forana
+    await supabase.from('attendance').delete().eq('student_id', studentId);
+    
+    // Després eliminem l'alumne
     const { error } = await supabase.from('students').delete().eq('id', studentId);
     if (error) throw error;
   },
 
   saveAttendanceLog: async (log: AttendanceLog) => {
-    await supabase.from('attendance').insert({
+    const { error: logError } = await supabase.from('attendance').insert({
       id: log.id,
       student_id: log.studentId,
       student_name: log.studentName,
@@ -94,7 +100,10 @@ export const dbService = {
       is_justified: log.isJustified,
       justification_reason: log.justificationReason
     });
-    await supabase.from('students').update({ status: log.status }).eq('id', log.studentId);
+    if (logError) throw logError;
+
+    const { error: stuError } = await supabase.from('students').update({ status: log.status }).eq('id', log.studentId);
+    if (stuError) throw stuError;
   },
 
   getConfig: async (): Promise<AppConfig> => {
@@ -120,13 +129,15 @@ export const dbService = {
   },
 
   resetSystem: async () => {
-    // Esborra assistències
-    await supabase.from('attendance').delete().neq('id', '0');
-    // Reseteja estats d'alumnes
-    await supabase.from('students').update({ status: 'absent' }).neq('id', '0');
-    // Seed base
-    await dbService.seedDatabase();
-    return true;
+    try {
+      await supabase.from('attendance').delete().neq('id', '0');
+      await supabase.from('students').delete().neq('id', '0');
+      await dbService.seedDatabase();
+      return true;
+    } catch (e) {
+      console.error("Error en resetSystem:", e);
+      return false;
+    }
   },
 
   seedDatabase: async () => {
@@ -167,17 +178,17 @@ export const dbService = {
 
   getDbStats: async () => {
     try {
-      const [students, courses, logs, justified] = await Promise.all([
+      const [studentsCount, coursesCount, logsCount, justifiedCount] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }),
         supabase.from('courses').select('*', { count: 'exact', head: true }),
         supabase.from('attendance').select('*', { count: 'exact', head: true }),
         supabase.from('attendance').select('*', { count: 'exact', head: true }).eq('is_justified', true)
       ]);
       return {
-        total_students: students.count || 0,
-        total_courses: courses.count || 0,
-        total_logs: logs.count || 0,
-        justified_absences: justified.count || 0
+        total_students: studentsCount.count || 0,
+        total_courses: coursesCount.count || 0,
+        total_logs: logsCount.count || 0,
+        justified_absences: justifiedCount.count || 0
       };
     } catch {
       return { total_students: 0, total_courses: 0, total_logs: 0, justified_absences: 0 };

@@ -16,7 +16,8 @@ import {
   LogOut,
   FileSearch,
   FileWarning,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { Logo } from '../components/Logo';
@@ -245,11 +246,39 @@ const StudentMobileView: React.FC = () => {
           </div>
         )}
 
+        {step === 'calendar' && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between">
+               <h3 className="font-black text-gray-900 flex items-center gap-2"><CalendarIcon size={18} className="text-blue-500"/> Horari de Classes</h3>
+               <button onClick={() => setStep('dashboard')} className="p-2 text-gray-400 hover:text-red-600 bg-gray-100 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            <div className="space-y-4">
+              {courses.map(c => (
+                <div key={c.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-blue-100 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black">
+                      {c.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-black text-gray-900">{c.name}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{c.schedule}</p>
+                    </div>
+                  </div>
+                  <Clock className="text-gray-200 group-hover:text-blue-200 transition-colors" size={20} />
+                </div>
+              ))}
+              {courses.length === 0 && (
+                <div className="text-center py-20 opacity-30 font-black uppercase tracking-widest">No hi ha cursos disponibles</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {step === 'justify-form' && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                <h3 className="font-black text-gray-900 flex items-center gap-2"><FileText size={18} className="text-green-500"/> Justificar Falta</h3>
-               <button onClick={() => setStep('dashboard')} className="text-gray-400 hover:text-red-600"><X size={20}/></button>
+               <button onClick={() => setStep('dashboard')} className="p-2 text-gray-400 hover:text-red-600 bg-gray-100 rounded-full transition-colors"><X size={20}/></button>
             </div>
 
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
